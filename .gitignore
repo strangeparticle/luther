@@ -1,0 +1,15 @@
+build/
+.gradle/
+.kotlin/
+.idea/
+kotlin-js-store/
+local.properties
+*.iml
+.DS_Store
+tmp/
+.cxx/
+captures/
+**/*.hprof
+xcuserdata/
+*.xcuserstate
+.worktrees/
