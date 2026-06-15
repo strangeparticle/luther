@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ macos-latest, ubuntu-latest, windows-latest ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+
+      # macOS builds and tests every target it can — JVM, web, Android, iOS, macOS native —
+      # and cross-compiles the Linux/Windows klibs. This is the comprehensive gate.
+      - name: Build and test (macOS — all targets)
+        if: runner.os == 'macOS'
+        run: ./gradlew build
+
+      # Linux and Windows hosts add native unit-test execution that macOS cannot run
+      # (linuxX64/mingwX64 tests only run on their matching OS), plus a JVM pass.
+      - name: Build and test (Linux native + JVM)
+        if: runner.os == 'Linux'
+        run: ./gradlew :luther-core:linuxX64Test :luther-core:jvmTest :luther-cmp:jvmTest
+
+      - name: Build and test (Windows native + JVM)
+        if: runner.os == 'Windows'
+        run: ./gradlew :luther-core:mingwX64Test :luther-core:jvmTest :luther-cmp:jvmTest

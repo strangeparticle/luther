@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.androidKotlinMultiplatformLibrary)
+    alias(libs.plugins.vanniktechMavenPublish)
 }
 
 // luther-cmp is the Compose Multiplatform UI layer. It has no native-desktop targets:
@@ -54,6 +55,46 @@ kotlin {
         jvmTest.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(compose.desktop.uiTestJUnit4)
+        }
+    }
+}
+
+// Publishing to Maven Central via the Central Portal (see docs/RELEASING.md).
+// Sign only when a signing key is supplied (the CI release path). This keeps
+// publishToMavenLocal usable for local verification without any keys.
+val signingKeyPresent = providers.gradleProperty("signingInMemoryKey").isPresent
+
+mavenPublishing {
+    publishToMavenCentral()
+    if (signingKeyPresent) {
+        signAllPublications()
+    }
+
+    coordinates(group.toString(), "luther-cmp", version.toString())
+
+    pom {
+        name = "luther-cmp"
+        description = "Compose Multiplatform chat UI for luther. Depends on (and re-exports) luther-core."
+        inceptionYear = "2026"
+        url = "https://github.com/strangeparticle/luther"
+        licenses {
+            license {
+                name = "BSD 3-Clause License"
+                url = "https://opensource.org/license/bsd-3-clause"
+                distribution = "https://opensource.org/license/bsd-3-clause"
+            }
+        }
+        developers {
+            developer {
+                id = "strangeparticle"
+                name = "Strange Particle"
+                url = "https://github.com/strangeparticle"
+            }
+        }
+        scm {
+            url = "https://github.com/strangeparticle/luther"
+            connection = "scm:git:git://github.com/strangeparticle/luther.git"
+            developerConnection = "scm:git:ssh://git@github.com/strangeparticle/luther.git"
         }
     }
 }

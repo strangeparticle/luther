@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.androidKotlinMultiplatformLibrary)
+    alias(libs.plugins.vanniktechMavenPublish)
 }
 
 // --- Single-source-of-truth version generation (see docs/README_Versions.md) ---
@@ -75,6 +76,49 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.ktor.client.mock)
             implementation(libs.kotlinx.coroutines.test)
+        }
+    }
+}
+
+// Publishing to Maven Central via the Central Portal (see docs/RELEASING.md). Credentials and
+// the signing key are supplied at release time through ORG_GRADLE_PROJECT_* env vars in CI — never
+// committed. publishToMavenLocal works without them for local verification.
+// Sign only when a signing key is supplied (the CI release path). This keeps
+// publishToMavenLocal usable for local verification without any keys.
+val signingKeyPresent = providers.gradleProperty("signingInMemoryKey").isPresent
+
+mavenPublishing {
+    publishToMavenCentral()
+    if (signingKeyPresent) {
+        signAllPublications()
+    }
+
+    coordinates(group.toString(), "luther-core", version.toString())
+
+    pom {
+        name = "luther-core"
+        description = "Pure-Kotlin AI engine: provider clients (Anthropic, OpenAI), a chat " +
+            "session/state machine, and a tool-call framework. No UI."
+        inceptionYear = "2026"
+        url = "https://github.com/strangeparticle/luther"
+        licenses {
+            license {
+                name = "BSD 3-Clause License"
+                url = "https://opensource.org/license/bsd-3-clause"
+                distribution = "https://opensource.org/license/bsd-3-clause"
+            }
+        }
+        developers {
+            developer {
+                id = "strangeparticle"
+                name = "Strange Particle"
+                url = "https://github.com/strangeparticle"
+            }
+        }
+        scm {
+            url = "https://github.com/strangeparticle/luther"
+            connection = "scm:git:git://github.com/strangeparticle/luther.git"
+            developerConnection = "scm:git:ssh://git@github.com/strangeparticle/luther.git"
         }
     }
 }

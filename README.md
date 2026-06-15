@@ -140,8 +140,12 @@ Windows runners.
 
 ## Publishing
 
-Releases go to Maven Central, triggered by pushing a `vX.Y.Z` tag (GitHub Actions). The
-publishing pipeline lands in a later setup phase.
+Both artifacts publish to Maven Central via the Central Portal, triggered by pushing a
+`vX.Y.Z` tag — the [Release workflow](.github/workflows/release.yml) builds the full target
+set on a macOS runner and publishes them as a single deployment. One-time credential and
+namespace setup, plus the release procedure, are in [docs/RELEASING.md](docs/RELEASING.md).
+You can preview the exact published layout locally with `./gradlew publishToMavenLocal`
+(no credentials needed).
 
 ## License
 

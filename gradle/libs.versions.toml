@@ -12,6 +12,7 @@ kotlinx-coroutines = "1.11.0"
 kotlinx-serialization-json = "1.11.0"
 kotlinx-datetime = "0.7.1"
 ktor = "3.5.0"
+vanniktech-publish = "0.36.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -30,3 +31,4 @@ kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", versio
 composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 androidKotlinMultiplatformLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
+vanniktechMavenPublish = { id = "com.vanniktech.maven.publish", version.ref = "vanniktech-publish" }

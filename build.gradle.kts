@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform) apply false
     alias(libs.plugins.composeCompiler) apply false
     alias(libs.plugins.androidKotlinMultiplatformLibrary) apply false
+    alias(libs.plugins.vanniktechMavenPublish) apply false
 }
 
 // group + version for every published module. The version is the single-source-of-truth
