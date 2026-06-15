@@ -74,6 +74,10 @@ internal data class AiChatPaneColors(
     val interactionScrollbackPane: Color,
     val helpScrollbackPane: Color,
     val scrollbackPaneOutline: Color,
+    val userMessageBubble: Color,
+    val userMessageText: Color,
+    val inputBorderFocused: Color,
+    val inputBorderUnfocused: Color,
 )
 
 internal object AiChatPaneDefaults {
@@ -93,6 +97,10 @@ internal object AiChatPaneDefaults {
         interactionScrollbackPane = MaterialTheme.colorScheme.surfaceContainerHigh,
         helpScrollbackPane = MaterialTheme.colorScheme.surfaceContainer,
         scrollbackPaneOutline = MaterialTheme.colorScheme.outlineVariant,
+        userMessageBubble = MaterialTheme.colorScheme.primary,
+        userMessageText = MaterialTheme.colorScheme.onPrimary,
+        inputBorderFocused = MaterialTheme.colorScheme.primary,
+        inputBorderUnfocused = MaterialTheme.colorScheme.outline,
     )
 
     fun scrollbackTextStyle(): TextStyle = TextStyle(
@@ -202,9 +210,9 @@ internal fun AiChatPane(
     val activeInputFocusRequester = inputFocusRequester ?: fallbackInputFocusRequester
     val inputInteractionSource = remember { MutableInteractionSource() }
     val isInputFocused by inputInteractionSource.collectIsFocusedAsState()
-    val inputBorderColor = if (isInputFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-    val inputBorderWidth = if (isInputFocused) 2.dp else 1.dp
     val colors = AiChatPaneDefaults.colors()
+    val inputBorderColor = if (isInputFocused) colors.inputBorderFocused else colors.inputBorderUnfocused
+    val inputBorderWidth = if (isInputFocused) 2.dp else 1.dp
     val historyListState = rememberLazyListState()
     LaunchedEffect(state.scrollbackPanes.size, state.scrollbackPanes.lastOrNull()) {
         if (state.scrollbackPanes.isNotEmpty()) {

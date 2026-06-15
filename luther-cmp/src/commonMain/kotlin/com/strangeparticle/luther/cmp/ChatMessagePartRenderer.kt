@@ -41,14 +41,15 @@ internal fun ChatMessagePartRenderer(
 
 @Composable
 private fun UserTextRenderer(text: String) {
+    val colors = AiChatPaneDefaults.colors()
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
         Surface(
-            color = MaterialTheme.colorScheme.primary,
+            color = colors.userMessageBubble,
             shape = MaterialTheme.shapes.small,
             modifier = Modifier.widthIn(max = 560.dp).testTag(AiChatTestTags.AI_CHAT_USER_MESSAGE),
         ) {
             Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)) {
-                Text(text, color = MaterialTheme.colorScheme.onPrimary, fontSize = 13.sp)
+                Text(text, color = colors.userMessageText, fontSize = 13.sp)
             }
         }
     }
