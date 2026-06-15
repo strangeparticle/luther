@@ -62,10 +62,13 @@ kotlin {
         commonMain {
             kotlin.srcDir(generateKotlinVersionFile)
             dependencies {
-                implementation(libs.kotlinx.coroutines.core)
-                implementation(libs.kotlinx.serialization.json)
+                // These appear in luther-core's PUBLIC API and so are exposed transitively:
+                // CoroutineScope (createLutherSession), JsonObject/Json (ToolCallHandler,
+                // ToolDefinition, ToolCallHandlerResponse), HttpClient (LutherBuiltInProviders.all).
+                api(libs.kotlinx.coroutines.core)
+                api(libs.kotlinx.serialization.json)
+                api(libs.ktor.client.core)
                 implementation(libs.kotlinx.datetime)
-                implementation(libs.ktor.client.core)
             }
         }
         commonTest.dependencies {

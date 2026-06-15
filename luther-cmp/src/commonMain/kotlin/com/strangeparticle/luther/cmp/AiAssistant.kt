@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
  * handle to issue boundary commands (take focus, trigger undo/redo for an Edit menu) and to read
  * status (isRunning, canUndo/canRedo gating). The host does not build or own the chat state.
  */
-internal class AiAssistantState internal constructor(
+class AiAssistantState internal constructor(
     val paneState: AiChatPaneState,
     val isRunning: Boolean,
     private val performUndoAction: () -> Unit,
@@ -53,7 +53,7 @@ internal class AiAssistantState internal constructor(
  * in-pane model picker reports a selection out via [onModelSelected] so the host can persist it.
  */
 @Composable
-internal fun rememberAiAssistant(
+fun rememberAiAssistant(
     providers: List<AiProvider>,
     settings: LutherSettings?,
     catalog: LutherProviderCatalog,

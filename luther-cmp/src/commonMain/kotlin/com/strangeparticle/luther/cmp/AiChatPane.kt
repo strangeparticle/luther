@@ -68,7 +68,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-internal data class AiChatPaneColors(
+data class AiChatPaneColors(
     val pane: Color,
     val inputSection: Color,
     val interactionScrollbackPane: Color,
@@ -80,7 +80,7 @@ internal data class AiChatPaneColors(
     val inputBorderUnfocused: Color,
 )
 
-internal object AiChatPaneDefaults {
+object AiChatPaneDefaults {
     /** Default vertical height the pane opens at the first time it is shown. */
     val DefaultHeight = 270.dp
 
@@ -194,7 +194,7 @@ private fun AiChatPaneModelDropdown(
 }
 
 @Composable
-internal fun AiChatPane(
+fun AiChatPane(
     state: AiChatPaneState,
     onClose: () -> Unit,
     onOpenSettings: () -> Unit,

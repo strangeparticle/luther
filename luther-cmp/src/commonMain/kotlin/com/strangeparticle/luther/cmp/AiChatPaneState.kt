@@ -2,7 +2,7 @@ package com.strangeparticle.luther.cmp
 
 import com.strangeparticle.luther.core.session.ChatMessagePart
 
-internal data class AiChatPaneState(
+data class AiChatPaneState(
     val isConfigured: Boolean,
     val providerLabel: String,
     val modelLabel: String,

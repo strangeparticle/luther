@@ -14,7 +14,7 @@ import com.strangeparticle.luther.core.session.projection.buildTranscriptParts
 import com.strangeparticle.luther.core.client.provider.ChatMessage
 import com.strangeparticle.luther.core.client.provider.ToolCall
 
-internal sealed class AiChatScrollbackPane {
+sealed class AiChatScrollbackPane {
     data class ProviderModelChange(
         val text: String,
     ) : AiChatScrollbackPane()
@@ -65,12 +65,12 @@ internal sealed class AiChatScrollbackPane {
     ) : AiChatScrollbackPane()
 }
 
-internal enum class CommandAttribution {
+enum class CommandAttribution {
     System,
     User,
 }
 
-internal enum class LocalCommandResponseStyle {
+enum class LocalCommandResponseStyle {
     Help,
     Error,
 }
