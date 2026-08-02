@@ -147,6 +147,30 @@ namespace setup, plus the release procedure, are in [docs/RELEASING.md](docs/REL
 You can preview the exact published layout locally with `./gradlew publishToMavenLocal`
 (no credentials needed).
 
+## Monitoring builds
+
+Every push to `main` and every pull request runs [CI](.github/workflows/ci.yml) (build + tests
+across macOS, Linux, and Windows); pushing a `vX.Y.Z` tag runs the
+[Release workflow](.github/workflows/release.yml). Watch either from the browser or the terminal.
+
+**Browser — the Actions tab:**
+
+- All runs (live status): <https://github.com/strangeparticle/luther/actions>
+- CI only: <https://github.com/strangeparticle/luther/actions/workflows/ci.yml>
+- Release only: <https://github.com/strangeparticle/luther/actions/workflows/release.yml>
+
+Click any run for per-job, per-step logs (streamed live while it runs).
+
+**Terminal (`gh` CLI):**
+
+```bash
+gh run list                 # recent runs + status
+gh run watch                # pick a run and live-stream it
+gh run view <run-id> --web  # open a run in the browser
+```
+
+Add `-R strangeparticle/luther` to any of these if you run them outside a local clone.
+
 ## License
 
 BSD 3-Clause. See [LICENSE](LICENSE).
