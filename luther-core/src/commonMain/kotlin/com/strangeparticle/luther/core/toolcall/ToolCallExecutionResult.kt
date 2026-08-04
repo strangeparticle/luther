@@ -6,7 +6,7 @@ import kotlinx.serialization.json.Json
 
 /** Generic result for dispatcher-level tool-call execution outcomes. */
 @Serializable
-internal data class ToolCallExecutionResult(
+public data class ToolCallExecutionResult(
     val success: Boolean,
     val message: String? = null,
     val code: String? = null,

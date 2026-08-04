@@ -3,7 +3,7 @@ package com.strangeparticle.luther.core.toolcall
 import kotlinx.serialization.SerializationException
 
 /** Dispatches model-requested tool calls to registered handlers. */
-internal class ToolCallDispatcher(
+public class ToolCallDispatcher(
     private val registry: ToolCallRegistry,
 ) {
     suspend fun execute(

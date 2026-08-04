@@ -17,16 +17,16 @@ import kotlinx.serialization.json.put
 @OptIn(ExperimentalSerializationApi::class)
 @SerialInfo
 @Target(AnnotationTarget.PROPERTY)
-internal annotation class ToolFieldDescription(val text: String)
+public annotation class ToolFieldDescription(val text: String)
 
 /** Convenience: extract the `enum` array from a property schema (used by tests). */
-internal fun JsonObject.enumValues(): JsonArray? = this["enum"] as? JsonArray
+public fun JsonObject.enumValues(): JsonArray? = this["enum"] as? JsonArray
 
 /**
  * Derive the JSON Schema for a ToolCall request from its `@Serializable` metadata
  * and any [ToolFieldDescription] annotations on its fields.
  */
-internal fun <T> requestSchema(serializer: KSerializer<T>): JsonObject =
+public fun <T> requestSchema(serializer: KSerializer<T>): JsonObject =
     schemaForDescriptor(serializer.descriptor, description = null)
 
 private fun schemaForDescriptor(

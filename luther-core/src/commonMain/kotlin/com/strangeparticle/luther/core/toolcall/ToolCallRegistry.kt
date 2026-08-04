@@ -6,7 +6,7 @@ import com.strangeparticle.luther.core.client.provider.ToolDefinition
  * Registry of provider-visible tool calls. Dispatch belongs to [ToolCallDispatcher]
  * so registry lookup stays reusable across host applications.
  */
-internal class ToolCallRegistry {
+public class ToolCallRegistry {
 
     // Key = provider-visible tool-call name (for example `add_app` or `save_springboard`).
     private val tools: MutableMap<String, ToolCallHandler> = linkedMapOf()
