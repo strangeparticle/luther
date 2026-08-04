@@ -44,6 +44,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.FocusRequester
@@ -202,8 +203,12 @@ fun AiChatPane(
     onTabOut: () -> Unit = {},
     onShiftTabOut: () -> Unit = {},
     inputFocusRequester: FocusRequester? = null,
-    height: androidx.compose.ui.unit.Dp = AiChatPaneDefaults.DefaultHeight,
+    initialHeight: androidx.compose.ui.unit.Dp = AiChatPaneDefaults.DefaultHeight,
+    onHeightChanged: (androidx.compose.ui.unit.Dp) -> Unit = {},
 ) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    var paneHeightValue by rememberSaveable { mutableStateOf(initialHeight.value) }
+    val paneHeight = paneHeightValue.dp
     var inputValue by remember { mutableStateOf(TextFieldValue("")) }
     var hasBeenRunning by remember { mutableStateOf(false) }
     val fallbackInputFocusRequester = remember { FocusRequester() }
@@ -249,17 +254,31 @@ fun AiChatPane(
         )
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .requiredHeight(height)
-            .testTag(AiChatTestTags.AI_CHAT_PANE),
-    ) {
-        Surface(
+    Column(modifier = Modifier.fillMaxWidth()) {
+        ChatPaneResizeHandle(
+            onDragDelta = { deltaPx ->
+                val deltaDp = with(density) { deltaPx.toDp() }
+                val proposed = (paneHeightValue.dp - deltaDp).coerceIn(
+                    AiChatPaneDefaults.MinHeight,
+                    AiChatPaneDefaults.MaxHeight,
+                )
+                if (proposed.value != paneHeightValue) {
+                    paneHeightValue = proposed.value
+                    onHeightChanged(proposed)
+                }
+            },
+        )
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .requiredHeight(height)
-                .onPreviewKeyEvent { event ->
+                .requiredHeight(paneHeight)
+                .testTag(AiChatTestTags.AI_CHAT_PANE),
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .requiredHeight(paneHeight)
+                    .onPreviewKeyEvent { event ->
                     if (event.type != KeyEventType.KeyDown && event.type != KeyEventType.KeyUp) return@onPreviewKeyEvent false
                     when (event.key) {
                         Key.Enter, Key.NumPadEnter -> {
@@ -490,6 +509,7 @@ fun AiChatPane(
                                 modifier = Modifier.height(32.dp).testTag(AiChatTestTags.AI_CHAT_STOP_BUTTON),
                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                             ) { Text("Stop", fontSize = 13.sp) }
+                        }
                         }
                     }
                 }

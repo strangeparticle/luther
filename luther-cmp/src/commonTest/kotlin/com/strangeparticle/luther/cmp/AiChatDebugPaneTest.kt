@@ -97,7 +97,7 @@ internal class AiChatDebugPaneTest {
                     ),
                     onClose = {},
                     onOpenSettings = {},
-                    height = 800.dp,
+                    initialHeight = 800.dp,
                 )
             }
         }

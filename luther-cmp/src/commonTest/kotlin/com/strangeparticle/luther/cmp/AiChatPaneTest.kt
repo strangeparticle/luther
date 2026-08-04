@@ -117,7 +117,7 @@ internal class AiChatPaneTest {
 
         setContent {
             MaterialTheme {
-                AiChatPane(state = state, onClose = {}, onOpenSettings = {}, height = 420.dp)
+                AiChatPane(state = state, onClose = {}, onOpenSettings = {}, initialHeight = 420.dp)
             }
         }
 
@@ -434,7 +434,7 @@ internal class AiChatPaneTest {
                     state = configuredState(),
                     onClose = {},
                     onOpenSettings = {},
-                    height = 360.dp,
+                    initialHeight = 360.dp,
                 )
             }
         }
@@ -764,7 +764,7 @@ internal class AiChatPaneTest {
                     state = configuredState(scrollbackPanes = scrollbackPanes.value),
                     onClose = {},
                     onOpenSettings = {},
-                    height = 220.dp,
+                    initialHeight = 220.dp,
                 )
             }
         }
@@ -785,7 +785,7 @@ internal class AiChatPaneTest {
                     state = configuredState(scrollbackPanes = numberedScrollbackPanes(12)),
                     onClose = {},
                     onOpenSettings = {},
-                    height = 220.dp,
+                    initialHeight = 220.dp,
                 )
             }
         }
@@ -804,7 +804,7 @@ internal class AiChatPaneTest {
                     state = configuredState(scrollbackPanes = scrollbackPanes.value),
                     onClose = {},
                     onOpenSettings = {},
-                    height = 220.dp,
+                    initialHeight = 220.dp,
                 )
             }
         }
