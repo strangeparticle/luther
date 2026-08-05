@@ -44,7 +44,7 @@ internal class OpenAiChatCompletionRequestTest {
     }
 
     @Test
-    fun `body has model, messages, and no tools when none provided`() {
+    fun `body has model messages and no tools when none provided`() {
         val body = buildBody(emptyRequest())
 
         assertEquals("gpt-5", (body["model"] as JsonPrimitive).content)

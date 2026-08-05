@@ -54,7 +54,7 @@ internal class OpenAiModelFilterTest {
     }
 
     @Test
-    fun `gpt-4o-audio-preview is rejected (audio variant)`() {
+    fun `gpt-4o-audio-preview is rejected - audio variant`() {
         assertFalse(com.strangeparticle.luther.core.client.provider.openai.OpenAiModelFilter.isChatCompletionCapable("gpt-4o-audio-preview"))
     }
 

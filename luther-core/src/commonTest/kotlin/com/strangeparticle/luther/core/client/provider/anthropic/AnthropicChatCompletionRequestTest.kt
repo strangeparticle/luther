@@ -49,7 +49,7 @@ internal class AnthropicChatCompletionRequestTest {
     }
 
     @Test
-    fun `body includes model, messages, system, and max_tokens`() {
+    fun `body includes model messages system and max_tokens`() {
         val body = buildBody(emptyRequest())
 
         assertEquals("claude-sonnet-4-6", body["model"]!!.jsonPrimitive.content)
@@ -59,7 +59,7 @@ internal class AnthropicChatCompletionRequestTest {
     }
 
     @Test
-    fun `system prompt goes in top-level field, not in messages`() {
+    fun `system prompt goes in top-level field not in messages`() {
         val body = buildBody(emptyRequest())
 
         val messages = body["messages"]!!.jsonArray

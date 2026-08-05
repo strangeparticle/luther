@@ -161,7 +161,7 @@ internal class AiProviderClientOpenAiTest {
     }
 
     @Test
-    fun `listModels GETs models endpoint and returns filtered, sorted models`() = runTest {
+    fun `listModels GETs models endpoint and returns filtered and sorted models`() = runTest {
         var capturedMethod: HttpMethod? = null
         var capturedUrl: String? = null
         val client = HttpClient(MockEngine { request ->

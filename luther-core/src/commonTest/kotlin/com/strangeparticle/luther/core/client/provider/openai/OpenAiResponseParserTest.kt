@@ -40,7 +40,7 @@ internal class OpenAiResponseParserTest {
     }
 
     @Test
-    fun `parse tool-call-only response (no text)`() {
+    fun `parse tool-call-only response - no text`() {
         val body =
             """
             {
