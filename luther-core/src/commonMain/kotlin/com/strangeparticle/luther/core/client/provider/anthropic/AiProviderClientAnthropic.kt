@@ -2,22 +2,28 @@ package com.strangeparticle.luther.core.client.provider.anthropic
 
 import com.strangeparticle.luther.core.client.provider.ChatRequest
 import com.strangeparticle.luther.core.client.provider.ChatResponse
+import com.strangeparticle.luther.core.client.provider.ChatResponseEvent
 import com.strangeparticle.luther.core.client.provider.Model
 import com.strangeparticle.luther.core.client.provider.ProviderErrorType
 import com.strangeparticle.luther.core.client.provider.ProviderException
 import com.strangeparticle.luther.core.client.provider.anthropic.request.AnthropicChatCompletionRequestDto
 import com.strangeparticle.luther.core.client.provider.anthropic.response.AnthropicResponseParser
+import com.strangeparticle.luther.core.client.provider.anthropic.response.AnthropicStreamAccumulator
+import com.strangeparticle.luther.core.client.provider.sse.readSseData
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
 
 /**
@@ -46,6 +52,18 @@ internal class AiProviderClientAnthropic(
         )
         val response = postOrThrow("$baseUrl/v1/messages", apiKey, body)
         return AnthropicResponseParser.parseSuccess(response.bodyAsText())
+    }
+
+    fun responseStream(request: ChatRequest): Flow<ChatResponseEvent> = flow {
+        val apiKey = getApiKeyOrThrow()
+        val body = json.encodeToString(
+            AnthropicChatCompletionRequestDto.serializer(),
+            AnthropicChatCompletionRequestDto.from(request, stream = true),
+        )
+        val response = postOrThrow("$baseUrl/v1/messages", apiKey, body)
+        val accumulator = AnthropicStreamAccumulator()
+        readSseData(response.bodyAsChannel()) { data -> accumulator.onData(data)?.let { emit(it) } }
+        emit(accumulator.completed())
     }
 
     suspend fun listModels(): List<Model> {

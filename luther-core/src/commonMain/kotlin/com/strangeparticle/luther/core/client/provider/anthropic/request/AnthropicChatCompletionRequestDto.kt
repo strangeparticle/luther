@@ -29,12 +29,13 @@ internal data class AnthropicChatCompletionRequestDto(
     @SerialName("max_tokens") val maxTokens: Int,
     val tools: List<AnthropicToolDto>? = null,
     @SerialName("tool_choice") val toolChoice: AnthropicToolChoiceDto? = null,
+    val stream: Boolean = false,
 ) {
     companion object {
 
         private const val DEFAULT_MAX_TOKENS = 8192
 
-        fun from(request: ChatRequest): AnthropicChatCompletionRequestDto =
+        fun from(request: ChatRequest, stream: Boolean = false): AnthropicChatCompletionRequestDto =
             AnthropicChatCompletionRequestDto(
                 model = request.modelId,
                 messages = buildMessages(request.messages),
@@ -42,6 +43,7 @@ internal data class AnthropicChatCompletionRequestDto(
                 maxTokens = request.maxTokens ?: DEFAULT_MAX_TOKENS,
                 tools = request.tools.takeIf { it.isNotEmpty() }?.map(::toAnthropicTool),
                 toolChoice = request.tools.takeIf { it.isNotEmpty() }?.let { AnthropicToolChoiceDto("auto") },
+                stream = stream,
             )
 
         /**
