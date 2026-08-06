@@ -169,6 +169,23 @@ internal class AiSessionManager(
         onTranscriptChanged()
     }
 
+    /**
+     * Removes the last item of the current (last) group in place, used to retract the streaming
+     * placeholder/partial assistant item when it turns out no assistant item should exist: the
+     * stream failed or was cancelled before completing (the error path publishes its own
+     * [AssistantErroredChatHistoryItem] instead), or the terminal response carries neither text
+     * nor tool calls (matching the old blocking code's "append nothing" outcome for that case).
+     */
+    private fun removeLastItemInCurrentGroup() {
+        val currentGroups = resolvedGroupsProvider().toMutableList()
+        if (currentGroups.isEmpty()) return
+        val lastGroup = currentGroups.last()
+        if (lastGroup.items.isEmpty()) return
+        currentGroups[currentGroups.lastIndex] = lastGroup.copy(items = lastGroup.items.dropLast(1))
+        resolvedUpdateGroups(currentGroups)
+        onTranscriptChanged()
+    }
+
     private suspend fun runRequestLoop() {
         while (true) {
             appendSnapshotIfChanged()
@@ -185,16 +202,27 @@ internal class AiSessionManager(
             appendItemToCurrentGroup(AssistantRespondedChatHistoryItem(text = "", toolCalls = emptyList()))
             val accumulatedText = StringBuilder()
             var completedResponse: ChatResponse? = null
-            responseStream(request).collect { event ->
-                when (event) {
-                    is ChatResponseEvent.TextDelta -> {
-                        accumulatedText.append(event.text)
-                        replaceLastItemInCurrentGroup(
-                            AssistantRespondedChatHistoryItem(text = accumulatedText.toString(), toolCalls = emptyList())
-                        )
+            try {
+                responseStream(request).collect { event ->
+                    when (event) {
+                        is ChatResponseEvent.TextDelta -> {
+                            accumulatedText.append(event.text)
+                            replaceLastItemInCurrentGroup(
+                                AssistantRespondedChatHistoryItem(text = accumulatedText.toString(), toolCalls = emptyList())
+                            )
+                        }
+                        is ChatResponseEvent.Completed -> completedResponse = event.response
                     }
-                    is ChatResponseEvent.Completed -> completedResponse = event.response
                 }
+            } catch (e: Throwable) {
+                // The stream failed (provider error) or the turn was cancelled (stop()) before
+                // completing. Either way no assistant item should remain: the error path appends
+                // its own AssistantErroredChatHistoryItem, and cancellation shouldn't leave a
+                // stray blank/partial bubble behind (nor leak partial text into the next turn's
+                // provider history). Retract the placeholder/partial item, then rethrow so the
+                // existing error handling / cancellation propagation is unchanged.
+                removeLastItemInCurrentGroup()
+                throw e
             }
             // A well-behaved responseStream always terminates with Completed; this fallback only
             // guards against a misbehaving provider stream that ends without one.
@@ -203,6 +231,13 @@ internal class AiSessionManager(
                 toolCalls = emptyList(),
                 stopReason = StopReason.Other,
             )
+
+            if (finalResponse.text == null && finalResponse.toolCalls.isEmpty()) {
+                // Matches the old blocking code's response.text?.let { ... } guard: a terminal
+                // response with neither text nor tool calls means no assistant item is published.
+                removeLastItemInCurrentGroup()
+                return
+            }
 
             // Replace the placeholder/partial item with the authoritative final item (text + any
             // tool calls) now that the stream has terminated.
