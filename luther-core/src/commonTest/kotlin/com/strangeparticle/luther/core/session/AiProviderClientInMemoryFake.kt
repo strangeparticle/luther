@@ -7,6 +7,7 @@ import com.strangeparticle.luther.core.client.provider.Model
 import com.strangeparticle.luther.core.client.provider.ProviderException
 import com.strangeparticle.luther.core.client.provider.StopReason
 import com.strangeparticle.luther.core.client.provider.ToolCall
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.JsonObject
@@ -73,6 +74,15 @@ internal class AiProviderClientInMemoryFake {
     var streamDeltas: List<String> = emptyList()
 
     /**
+     * When set, [responseStream] suspends on this deferred after emitting [streamDeltas] and
+     * before resolving/emitting the terminal [ChatResponseEvent.Completed]. Lets a test hold a
+     * turn open mid-stream (e.g. to call `manager.stop()` while a partial assistant message is
+     * showing) and observe the effect of cancelling collection before completion. Unset (null)
+     * by default, i.e. no mid-stream suspension — matching a non-gated response.
+     */
+    var streamCompletionGate: CompletableDeferred<Unit>? = null
+
+    /**
      * Streaming counterpart to [sendChat]: records the request, emits [streamDeltas] as
      * [ChatResponseEvent.TextDelta]s, then resolves the terminal response from the same
      * [sendChatHandler] / [responseQueue] source [sendChat] uses and emits it as a
@@ -86,6 +96,7 @@ internal class AiProviderClientInMemoryFake {
         for (delta in streamDeltas) {
             emit(ChatResponseEvent.TextDelta(delta))
         }
+        streamCompletionGate?.await()
         val response = sendChatHandler?.invoke(request) ?: if (responseQueue.isNotEmpty()) {
             responseQueue.removeFirst()
         } else {
