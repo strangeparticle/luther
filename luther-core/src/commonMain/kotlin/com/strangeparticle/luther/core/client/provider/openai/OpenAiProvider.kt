@@ -3,9 +3,11 @@ package com.strangeparticle.luther.core.client.provider.openai
 import com.strangeparticle.luther.core.client.provider.AiProvider
 import com.strangeparticle.luther.core.client.provider.ChatRequest
 import com.strangeparticle.luther.core.client.provider.ChatResponse
+import com.strangeparticle.luther.core.client.provider.ChatResponseEvent
 import com.strangeparticle.luther.core.client.provider.Model
 import com.strangeparticle.luther.core.client.provider.ProviderConfig
 import io.ktor.client.HttpClient
+import kotlinx.coroutines.flow.Flow
 
 internal class OpenAiProvider(private val httpClient: HttpClient) : AiProvider {
     override val id = "openai"
@@ -20,6 +22,9 @@ internal class OpenAiProvider(private val httpClient: HttpClient) : AiProvider {
 
     override suspend fun respond(config: ProviderConfig, request: ChatRequest): ChatResponse =
         client(config).sendChat(request)
+
+    override fun responseStream(config: ProviderConfig, request: ChatRequest): Flow<ChatResponseEvent> =
+        client(config).responseStream(request)
 
     private fun client(config: ProviderConfig) =
         AiProviderClientOpenAi(httpClient = httpClient, apiKeyProvider = { (config as OpenAiConfig).apiKey })

@@ -19,14 +19,16 @@ internal data class OpenAiChatCompletionRequestDto(
     val toolChoice: String? = null,
     @SerialName("max_tokens")
     val maxTokens: Int? = null,
+    val stream: Boolean = false,
 ) {
     companion object {
-        fun from(request: ChatRequest): OpenAiChatCompletionRequestDto = OpenAiChatCompletionRequestDto(
+        fun from(request: ChatRequest, stream: Boolean = false): OpenAiChatCompletionRequestDto = OpenAiChatCompletionRequestDto(
             model = request.modelId,
             messages = buildMessages(request),
             tools = request.tools.takeIf { it.isNotEmpty() }?.map(::toOpenAiTool),
             toolChoice = request.tools.takeIf { it.isNotEmpty() }?.let { "auto" },
             maxTokens = request.maxTokens,
+            stream = stream,
         )
 
         private fun buildMessages(request: ChatRequest): List<com.strangeparticle.luther.core.client.provider.openai.request.OpenAiMessageDto> = buildList {
