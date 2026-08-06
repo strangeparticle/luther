@@ -20,40 +20,22 @@ independently consumable artifacts:
 | Linux native (`linuxX64`) | ✅ | — |
 | Windows native (`mingwX64`) | ✅ | — |
 
-Desktop coverage for **luther-cmp** (macOS, Linux, Windows) is delivered by its **JVM**
-artifact via Compose Desktop — Compose Multiplatform has no native-desktop UI, so there are
-no luther-cmp native-desktop klibs. **luther-core**, being pure Kotlin, additionally
-publishes true native klibs for those desktop OSes, which is what lets a native consumer
-(e.g. a Kotlin/Native CLI) use the engine.
+## Versioning & toolchain
 
-## Versioning & why the toolchain is pinned
+**Versioning.** The version is set in one place — `lutherVersion` in
+[`gradle.properties`](gradle.properties); the runtime `LutherVersion.VERSION` constant and the
+Maven coordinates are generated from it. To release, bump that line and tag `vX.Y.Z` (see
+[docs/README_Versions.md](docs/README_Versions.md)).
 
-**Single source of truth.** The version is declared in exactly one place —
-`lutherVersion` in [`gradle.properties`](gradle.properties). A Gradle task generates the
-runtime constant `com.strangeparticle.luther.core.LutherVersion.VERSION` from it, and the
-Maven coordinates derive from it too. The generated file lives under `build/` (git-ignored),
-so the version is never duplicated in tracked source and cannot drift. To release, bump that
-one line and tag `vX.Y.Z`. Full details in [docs/README_Versions.md](docs/README_Versions.md).
-
-**Why luther pins to a specific (not latest) toolchain.** luther deliberately uses the
-exact Kotlin / Compose / Gradle / AGP set that the Compose Multiplatform template generator
-validates together — currently **Kotlin 2.4.0, Compose Multiplatform 1.11.1, Gradle 9.1.0,
-AGP 9.0.1** (see [`gradle/libs.versions.toml`](gradle/libs.versions.toml)). The CMP template
-trails the newest Kotlin on purpose: the Compose compiler, AGP, Gradle, Skiko, and the
-Kotlin/Native toolchain are only certified together a version or two behind Kotlin's tip,
-and luther wants the *full* native / iOS / web / Android matrix — for which that validated
-set is the safe one. Chasing "latest Kotlin" risks a target whose toolchain isn't ready yet
-and buys nothing.
-
-This also has a hard consequence for consumers: **Kotlin library consumption is
-forward-only** — a project can use a library built with the same or older Kotlin, but
-generally not a newer one, and for the Compose UI the Compose runtime ABI must match too. So
-a consumer must be on **Kotlin ≥ luther's** version. luther never moves ahead of its primary
-consumer (springboard); they bump in lockstep when the template advances.
+**Pinned toolchain.** luther uses the exact Kotlin / Compose / Gradle / AGP set the Compose
+Multiplatform template validates together — currently **Kotlin 2.4.0, Compose 1.11.1, Gradle
+9.1.0, AGP 9.0.1** (see [`gradle/libs.versions.toml`](gradle/libs.versions.toml)) — so the full
+native / iOS / web / Android matrix builds reliably. Because Kotlin consumption is forward-only,
+consumers must be on **Kotlin ≥ luther's**.
 
 ## Local development — the composite-build dev loop
 
-When you're developing luther and a consumer (e.g. springboard, fretnaut) at the same time,
+When you're developing luther and a consumer at the same time,
 you don't publish on every change. Instead the consumer pulls luther in as a **Gradle
 composite build**, so edits to luther source are picked up instantly with full
 code-navigation in Android Studio — no publish step.
