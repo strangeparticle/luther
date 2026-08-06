@@ -56,7 +56,7 @@ internal class AnthropicStreamAccumulator(private val json: Json = Json { ignore
     fun completed(): ChatResponseEvent.Completed = ChatResponseEvent.Completed(
         ChatResponse(
             text = text.toString().takeIf { it.isNotEmpty() },
-            toolCalls = toolBlocks.values.map { ToolCall(it.id, it.name, it.args.toString()) },
+            toolCalls = toolBlocks.values.map { ToolCall(it.id, it.name, it.args.toString().ifEmpty { "{}" }) },
             stopReason = mapStopReason(stopReason),
         )
     )

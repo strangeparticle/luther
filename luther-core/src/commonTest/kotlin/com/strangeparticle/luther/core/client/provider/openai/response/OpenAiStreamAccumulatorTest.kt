@@ -46,4 +46,16 @@ class OpenAiStreamAccumulatorTest {
         assertEquals("add_app", call.name)
         assertEquals("""{"name":"Chrome"}""", call.argumentsJson)
     }
+
+    @Test
+    fun `tool_call with empty arguments and no further fragments yields empty object arguments`() {
+        val events = feed(
+            OpenAiStreamAccumulator(),
+            """{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_1","function":{"name":"list_apps","arguments":""}}]},"finish_reason":null}]}""",
+            """{"choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}""",
+        )
+        val completed = events.last() as ChatResponseEvent.Completed
+        val call = completed.response.toolCalls.single()
+        assertEquals("{}", call.argumentsJson)
+    }
 }

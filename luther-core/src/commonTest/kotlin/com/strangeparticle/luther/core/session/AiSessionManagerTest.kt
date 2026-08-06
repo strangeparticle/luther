@@ -646,7 +646,6 @@ internal class AiSessionManagerTest {
         maxHistoryTokens: Int = AiSessionManager.DEFAULT_MAX_HISTORY_TOKENS,
         onTranscriptChanged: () -> Unit = {},
     ): AiSessionManager = AiSessionManager(
-        sendChat = aiClient::sendChat,
         responseStream = aiClient::responseStream,
         toolCallRegistry = toolCallRegistry,
         snapshotProvider = snapshotProvider,

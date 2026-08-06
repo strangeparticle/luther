@@ -52,4 +52,19 @@ class AnthropicStreamAccumulatorTest {
         assertEquals("""{"name":"Chrome"}""", call.argumentsJson)
         assertEquals(null, completed.response.text)
     }
+
+    @Test
+    fun `tool_use block with no input_json_delta fragments yields empty object arguments`() {
+        val events = feed(
+            AnthropicStreamAccumulator(),
+            """{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"tu_1","name":"list_apps","input":{}}}""",
+            """{"type":"content_block_stop","index":0}""",
+            """{"type":"message_delta","delta":{"stop_reason":"tool_use"}}""",
+            """{"type":"message_stop"}""",
+        )
+        val completed = events.last() as ChatResponseEvent.Completed
+        assertEquals(1, completed.response.toolCalls.size)
+        val call = completed.response.toolCalls.single()
+        assertEquals("{}", call.argumentsJson)
+    }
 }

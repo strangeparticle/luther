@@ -33,7 +33,6 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 internal class AiSessionManager(
-    private val sendChat: suspend (ChatRequest) -> ChatResponse,
     private val responseStream: (ChatRequest) -> Flow<ChatResponseEvent>,
     private val toolCallRegistry: ToolCallRegistry,
     private val snapshotProvider: AiSessionSnapshotProvider,

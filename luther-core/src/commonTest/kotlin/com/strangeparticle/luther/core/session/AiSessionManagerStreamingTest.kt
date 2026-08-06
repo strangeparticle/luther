@@ -112,7 +112,6 @@ internal class AiSessionManagerStreamingTest {
 
     private fun TestScope.createStreamingManager(fake: AiProviderClientInMemoryFake): AiSessionManager =
         AiSessionManager(
-            sendChat = fake::sendChat,
             responseStream = fake::responseStream,
             toolCallRegistry = ToolCallRegistry(),
             snapshotProvider = object : AiSessionSnapshotProvider {

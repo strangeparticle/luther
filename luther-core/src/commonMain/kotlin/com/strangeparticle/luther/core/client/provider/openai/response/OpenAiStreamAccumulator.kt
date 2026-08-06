@@ -45,7 +45,7 @@ internal class OpenAiStreamAccumulator(private val json: Json = Json { ignoreUnk
     fun completed(): ChatResponseEvent.Completed = ChatResponseEvent.Completed(
         ChatResponse(
             text = text.toString().takeIf { it.isNotEmpty() },
-            toolCalls = tools.values.map { ToolCall(it.id, it.name, it.args.toString()) },
+            toolCalls = tools.values.map { ToolCall(it.id, it.name, it.args.toString().ifEmpty { "{}" }) },
             stopReason = mapStopReason(finishReason),
         )
     )
