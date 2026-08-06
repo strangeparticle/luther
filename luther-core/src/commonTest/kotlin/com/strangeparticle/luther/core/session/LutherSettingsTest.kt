@@ -14,7 +14,7 @@ private val provider = object : AiProvider {
     override val id = "p"; override val displayName = "P"
     override fun isConfigured(config: ProviderConfig) = (config as Cfg).key.isNotBlank()
     override suspend fun listModels(config: ProviderConfig): List<Model> = emptyList()
-    override suspend fun sendChat(config: ProviderConfig, request: ChatRequest): ChatResponse =
+    override suspend fun respond(config: ProviderConfig, request: ChatRequest): ChatResponse =
         throw UnsupportedOperationException()
 }
 

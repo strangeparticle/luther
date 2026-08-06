@@ -1,5 +1,8 @@
 package com.strangeparticle.luther.core.client.provider
 
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+
 /**
  * Framework contract for an AI provider integration. Providers live whole inside
  * luther-core and know nothing about the host's settings system: the host supplies
@@ -22,5 +25,14 @@ interface AiProvider {
     suspend fun listModels(config: ProviderConfig): List<Model>
 
     /** Send [request] using [config] and suspend until the provider returns a full response. */
-    suspend fun sendChat(config: ProviderConfig, request: ChatRequest): ChatResponse
+    suspend fun respond(config: ProviderConfig, request: ChatRequest): ChatResponse
+
+    /**
+     * Stream the assistant response for [request]. Cold flow: collection starts the request;
+     * cancelling collection cancels it. Emits [ChatResponseEvent.TextDelta]s then a terminal
+     * [ChatResponseEvent.Completed]. Default wraps [respond] (no token streaming) for providers
+     * that cannot stream; streaming providers override this.
+     */
+    fun responseStream(config: ProviderConfig, request: ChatRequest): Flow<ChatResponseEvent> =
+        flow { emit(ChatResponseEvent.Completed(respond(config, request))) }
 }

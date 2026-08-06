@@ -15,7 +15,7 @@ private class FakeProvider(
     override val displayName = "Fake"
     override fun isConfigured(config: ProviderConfig) = (config as FakeConfig).key.isNotBlank()
     override suspend fun listModels(config: ProviderConfig): List<Model> = models
-    override suspend fun sendChat(config: ProviderConfig, request: ChatRequest): ChatResponse =
+    override suspend fun respond(config: ProviderConfig, request: ChatRequest): ChatResponse =
         throw UnsupportedOperationException()
 }
 

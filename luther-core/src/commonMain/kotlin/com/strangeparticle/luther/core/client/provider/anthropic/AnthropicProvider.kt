@@ -18,7 +18,7 @@ internal class AnthropicProvider(private val httpClient: HttpClient) : AiProvide
     override suspend fun listModels(config: ProviderConfig): List<Model> =
         client(config).listModels()
 
-    override suspend fun sendChat(config: ProviderConfig, request: ChatRequest): ChatResponse =
+    override suspend fun respond(config: ProviderConfig, request: ChatRequest): ChatResponse =
         client(config).sendChat(request)
 
     private fun client(config: ProviderConfig) =

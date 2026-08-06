@@ -16,13 +16,13 @@ import kotlin.test.assertTrue
 private data class TestProviderConfig(val key: String) : ProviderConfig
 
 /**
- * Test provider whose `sendChat` records the [TestProviderConfig.key] it was bound to.
+ * Test provider whose `respond` records the [TestProviderConfig.key] it was bound to.
  *
  * The old design exposed `createClient`, so "did the session rebuild?" was observable by
- * counting client-factory invocations. The new design binds `sendChat` per manager:
- * `buildManager` captures the current provider + config in a fresh `sendChat` lambda, and a
+ * counting client-factory invocations. The new design binds `respond` per manager:
+ * `buildManager` captures the current provider + config in a fresh `respond` lambda, and a
  * rebuild produces a new lambda bound to the new config. We make rebuilds observable by
- * recording, on every `sendChat` invocation, the config key the active binding closed over.
+ * recording, on every `respond` invocation, the config key the active binding closed over.
  * A model-only update reuses the existing binding (same key); a config change rebuilds and the
  * binding closes over the new key.
  */
@@ -32,7 +32,7 @@ private class RecordingTestProvider : AiProvider {
     override val displayName = "P"
     override fun isConfigured(config: ProviderConfig) = (config as TestProviderConfig).key.isNotBlank()
     override suspend fun listModels(config: ProviderConfig): List<Model> = emptyList()
-    override suspend fun sendChat(config: ProviderConfig, request: ChatRequest): ChatResponse {
+    override suspend fun respond(config: ProviderConfig, request: ChatRequest): ChatResponse {
         sendChatBoundKeys += (config as TestProviderConfig).key
         return ChatResponse(text = "", toolCalls = emptyList(), stopReason = StopReason.Stop)
     }

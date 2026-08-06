@@ -18,7 +18,7 @@ internal class OpenAiProvider(private val httpClient: HttpClient) : AiProvider {
     override suspend fun listModels(config: ProviderConfig): List<Model> =
         client(config).listModels()
 
-    override suspend fun sendChat(config: ProviderConfig, request: ChatRequest): ChatResponse =
+    override suspend fun respond(config: ProviderConfig, request: ChatRequest): ChatResponse =
         client(config).sendChat(request)
 
     private fun client(config: ProviderConfig) =

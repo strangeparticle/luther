@@ -30,7 +30,7 @@ private class CustomFakeProvider : AiProvider {
         Model("fake-embed", "Fake Embed", supportsToolCalling = false),
     )
 
-    override suspend fun sendChat(config: ProviderConfig, request: ChatRequest): ChatResponse =
+    override suspend fun respond(config: ProviderConfig, request: ChatRequest): ChatResponse =
         ChatResponse("ok", emptyList(), StopReason.Stop)
 }
 
