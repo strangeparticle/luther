@@ -2,16 +2,20 @@ package com.strangeparticle.luther.core.session
 
 import com.strangeparticle.luther.core.client.provider.ChatRequest
 import com.strangeparticle.luther.core.client.provider.ChatResponse
+import com.strangeparticle.luther.core.client.provider.ChatResponseEvent
 import com.strangeparticle.luther.core.client.provider.Model
 import com.strangeparticle.luther.core.client.provider.ProviderException
 import com.strangeparticle.luther.core.client.provider.StopReason
 import com.strangeparticle.luther.core.client.provider.ToolCall
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.JsonObject
 
 /**
- * Test double for a provider's transport. Exposes [sendChat] / [listModels] matching the
- * new provider shapes (the manager takes a `suspend (ChatRequest) -> ChatResponse`, so tests
- * pass `fake::sendChat`). Tests script the responses they want; the fake records everything
+ * Test double for a provider's transport. Exposes [sendChat] / [responseStream] / [listModels]
+ * matching the provider shapes (the manager takes both a `suspend (ChatRequest) -> ChatResponse`
+ * and a `(ChatRequest) -> Flow<ChatResponseEvent>`, so tests pass `fake::sendChat` and
+ * `fake::responseStream`). Tests script the responses they want; the fake records everything
  * that flows through it so assertions can verify request shape without touching Ktor or any
  * HTTP transport.
  *
@@ -22,10 +26,12 @@ import kotlinx.serialization.json.JsonObject
  *    inspect the request to decide what to send back (e.g. agent-loop iterations
  *    where the second request looks different from the first).
  * 2. **Response queue.** Push responses to [responseQueue] in order; each
- *    `sendChat()` pops the head. Useful for simple linear scenarios.
+ *    `sendChat()` / `responseStream()` pops the head. Useful for simple linear scenarios.
  *
- * If both are unset and `sendChat()` is called, the fake throws to make the missing
- * setup obvious in test output.
+ * If both are unset and `sendChat()` / `responseStream()` is called, the fake throws to make
+ * the missing setup obvious in test output. [responseStream] additionally emits [streamDeltas]
+ * (empty by default) as [ChatResponseEvent.TextDelta]s before its terminal
+ * [ChatResponseEvent.Completed], letting tests exercise the in-progress streaming path.
  */
 internal class AiProviderClientInMemoryFake {
 
@@ -61,6 +67,34 @@ internal class AiProviderClientInMemoryFake {
             )
         }
         return responseQueue.removeFirst()
+    }
+
+    /** Deltas [responseStream] emits, in order, before its terminal [ChatResponseEvent.Completed]. Empty by default, i.e. a single Completed emission — matching a non-streaming response. */
+    var streamDeltas: List<String> = emptyList()
+
+    /**
+     * Streaming counterpart to [sendChat]: records the request, emits [streamDeltas] as
+     * [ChatResponseEvent.TextDelta]s, then resolves the terminal response from the same
+     * [sendChatHandler] / [responseQueue] source [sendChat] uses and emits it as a
+     * [ChatResponseEvent.Completed]. [sendChatException] is honored the same way (thrown before
+     * anything is emitted), so tests that script an error see identical behavior whether the
+     * session exercises the blocking or the streaming call.
+     */
+    fun responseStream(request: ChatRequest): Flow<ChatResponseEvent> = flow {
+        recordedRequests += request
+        sendChatException?.let { throw it }
+        for (delta in streamDeltas) {
+            emit(ChatResponseEvent.TextDelta(delta))
+        }
+        val response = sendChatHandler?.invoke(request) ?: if (responseQueue.isNotEmpty()) {
+            responseQueue.removeFirst()
+        } else {
+            throw IllegalStateException(
+                "AiProviderClientInMemoryFake.responseStream() called but neither sendChatHandler " +
+                    "nor responseQueue was configured. Test setup error."
+            )
+        }
+        emit(ChatResponseEvent.Completed(response))
     }
 
     suspend fun listModels(): List<Model> {

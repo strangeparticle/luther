@@ -79,6 +79,7 @@ class LutherSession internal constructor(
         val registry = ToolCallRegistry().apply { toolHandlers.forEach { register(it) } }
         return AiSessionManager(
             sendChat = { request -> currentProvider.respond(currentConfig, request) },
+            responseStream = { request -> currentProvider.responseStream(currentConfig, request) },
             toolCallRegistry = registry,
             snapshotProvider = snapshotProvider,
             toolCallExecutionContextFactory = executionContextFactory,

@@ -3,6 +3,8 @@ package com.strangeparticle.luther.core.session
 import com.strangeparticle.luther.core.client.provider.ChatMessage
 import com.strangeparticle.luther.core.client.provider.ChatRequest
 import com.strangeparticle.luther.core.client.provider.ChatResponse
+import com.strangeparticle.luther.core.client.provider.ChatResponseEvent
+import com.strangeparticle.luther.core.client.provider.StopReason
 import com.strangeparticle.luther.core.session.event.ChatHistoryItem
 import com.strangeparticle.luther.core.session.event.AssistantErroredChatHistoryItem
 import com.strangeparticle.luther.core.session.event.AssistantRespondedChatHistoryItem
@@ -26,10 +28,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 internal class AiSessionManager(
     private val sendChat: suspend (ChatRequest) -> ChatResponse,
+    private val responseStream: (ChatRequest) -> Flow<ChatResponseEvent>,
     private val toolCallRegistry: ToolCallRegistry,
     private val snapshotProvider: AiSessionSnapshotProvider,
     private val toolCallExecutionContextFactory: AiSessionToolCallExecutionContextFactory,
@@ -149,30 +154,66 @@ internal class AiSessionManager(
         onTranscriptChanged()
     }
 
+    /**
+     * Replaces the last item of the current (last) group in place, used while a streaming
+     * assistant response grows: each delta swaps out the previous placeholder/partial item
+     * for a new one carrying the updated accumulated text, rather than appending a new item.
+     */
+    private fun replaceLastItemInCurrentGroup(item: ChatHistoryItem) {
+        val currentGroups = resolvedGroupsProvider().toMutableList()
+        if (currentGroups.isEmpty()) return
+        val lastGroup = currentGroups.last()
+        currentGroups[currentGroups.lastIndex] =
+            lastGroup.copy(items = lastGroup.items.dropLast(1) + item)
+        resolvedUpdateGroups(currentGroups)
+        onTranscriptChanged()
+    }
+
     private suspend fun runRequestLoop() {
         while (true) {
             appendSnapshotIfChanged()
             val requestHistory = evictHistoryIfNeeded(history)
-            val response = sendChat(
-                ChatRequest(
-                    modelId = modelIdProvider(),
-                    systemPrompt = systemPromptProvider(),
-                    messages = requestHistory,
-                    tools = toolCallRegistry.getDefinitions(),
-                )
+            val request = ChatRequest(
+                modelId = modelIdProvider(),
+                systemPrompt = systemPromptProvider(),
+                messages = requestHistory,
+                tools = toolCallRegistry.getDefinitions(),
             )
 
-            if (response.toolCalls.isEmpty()) {
-                response.text?.let { text ->
-                    appendItemToCurrentGroup(AssistantRespondedChatHistoryItem(text = text, toolCalls = emptyList()))
+            // Publish a placeholder immediately so the UI has something to grow in place; text
+            // starts as "" (never null) because buildTranscriptParts drops a null-text item.
+            appendItemToCurrentGroup(AssistantRespondedChatHistoryItem(text = "", toolCalls = emptyList()))
+            val accumulatedText = StringBuilder()
+            var completedResponse: ChatResponse? = null
+            responseStream(request).collect { event ->
+                when (event) {
+                    is ChatResponseEvent.TextDelta -> {
+                        accumulatedText.append(event.text)
+                        replaceLastItemInCurrentGroup(
+                            AssistantRespondedChatHistoryItem(text = accumulatedText.toString(), toolCalls = emptyList())
+                        )
+                    }
+                    is ChatResponseEvent.Completed -> completedResponse = event.response
                 }
+            }
+            // A well-behaved responseStream always terminates with Completed; this fallback only
+            // guards against a misbehaving provider stream that ends without one.
+            val finalResponse = completedResponse ?: ChatResponse(
+                text = accumulatedText.toString().takeIf { it.isNotEmpty() },
+                toolCalls = emptyList(),
+                stopReason = StopReason.Other,
+            )
+
+            // Replace the placeholder/partial item with the authoritative final item (text + any
+            // tool calls) now that the stream has terminated.
+            replaceLastItemInCurrentGroup(AssistantRespondedChatHistoryItem(
+                text = finalResponse.text,
+                toolCalls = finalResponse.toolCalls,
+            ))
+
+            if (finalResponse.toolCalls.isEmpty()) {
                 return
             }
-
-            appendItemToCurrentGroup(AssistantRespondedChatHistoryItem(
-                text = response.text,
-                toolCalls = response.toolCalls,
-            ))
 
             val context = toolCallExecutionContextFactory.createToolCallExecutionContext(
                 onStateChanged = { stateChangedSinceLastSnapshotSent = true },
@@ -182,7 +223,7 @@ internal class AiSessionManager(
                     deferred.await()
                 },
             )
-            for (toolCall in response.toolCalls) {
+            for (toolCall in finalResponse.toolCalls) {
                 appendItemToCurrentGroup(ToolCallStartedChatHistoryItem(toolCall))
 
                 val result = toolCallDispatcher.execute(

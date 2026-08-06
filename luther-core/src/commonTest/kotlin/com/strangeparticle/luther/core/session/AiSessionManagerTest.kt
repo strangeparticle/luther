@@ -647,6 +647,7 @@ internal class AiSessionManagerTest {
         onTranscriptChanged: () -> Unit = {},
     ): AiSessionManager = AiSessionManager(
         sendChat = aiClient::sendChat,
+        responseStream = aiClient::responseStream,
         toolCallRegistry = toolCallRegistry,
         snapshotProvider = snapshotProvider,
         toolCallExecutionContextFactory = object : AiSessionToolCallExecutionContextFactory {
