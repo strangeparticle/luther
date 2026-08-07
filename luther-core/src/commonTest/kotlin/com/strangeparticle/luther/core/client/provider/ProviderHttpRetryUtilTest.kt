@@ -186,4 +186,9 @@ internal class ProviderHttpRetryUtilTest {
     fun `parseRetryAfter null returns null`() {
         assertNull(parseRetryAfter(null))
     }
+
+    @Test
+    fun `parseRetryAfter numeric overflow returns null`() {
+        assertNull(parseRetryAfter("99999999999999999999"))
+    }
 }

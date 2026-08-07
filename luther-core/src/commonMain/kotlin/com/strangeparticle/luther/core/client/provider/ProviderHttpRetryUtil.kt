@@ -80,7 +80,9 @@ internal suspend fun postWithRetry(
                 "Network error: ${transportException.message}",
                 cause = transportException,
             )
-            if (RETRYABLE_ERROR_TYPES.contains(wrapped.classified) && !isLastAttempt) {
+            // A wrapped transport exception is always classified Network, which is always
+            // retryable, so the only decision left is whether attempts remain.
+            if (!isLastAttempt) {
                 delay(delayFor(attemptIndex, retryAfter = null, policy, random))
                 continue
             } else {
@@ -135,9 +137,7 @@ internal fun parseRetryAfter(headerValue: String?): Duration? {
         return null
     }
 
-    if (headerValue.all { it.isDigit() }) {
-        return headerValue.toLong().seconds
-    }
+    headerValue.toLongOrNull()?.let { return it.seconds }
 
     return try {
         val target = Instant.parse(headerValue)
