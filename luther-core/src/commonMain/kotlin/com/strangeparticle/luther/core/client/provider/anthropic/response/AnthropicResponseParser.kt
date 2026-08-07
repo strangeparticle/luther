@@ -53,17 +53,21 @@ internal object AnthropicResponseParser {
         )
     }
 
-    fun parseErrorAndThrow(httpStatus: Int, body: String?): Nothing {
+    fun classifyError(httpStatus: Int, body: String?): ProviderException {
         val anthropicError = body?.let { extractAnthropicError(it) }
         val errorType = anthropicError?.let { classifyByAnthropicError(it.type, it.message) }
             ?: classifyHttpStatus(httpStatus)
         val rawProviderMessage = anthropicError?.message ?: body
-        throw ProviderException(
+        return ProviderException(
             classified = errorType,
             message = "Anthropic request failed with HTTP $httpStatus" +
                 (rawProviderMessage?.let { ": $it" } ?: ""),
             rawProviderMessage = rawProviderMessage,
         )
+    }
+
+    fun parseErrorAndThrow(httpStatus: Int, body: String?): Nothing {
+        throw classifyError(httpStatus, body)
     }
 
     fun parseModelListResponse(body: String): JsonObject = parseRawJsonObjectOrThrow(body)

@@ -64,18 +64,22 @@ internal object OpenAiResponseParser {
      * quota exhaustion from a transient rate limit on 429, or a context-too-large
      * from any other 400). Falls back to HTTP-status-based classification.
      */
-    fun parseErrorAndThrow(httpStatus: Int, body: String?): Nothing {
+    fun classifyError(httpStatus: Int, body: String?): ProviderException {
         val openAiError = body?.let { extractOpenAiError(it) }
         val errorClass = openAiError?.let { classifyByOpenAiError(it) }
             ?: classifyHttpStatus(httpStatus)
         val rawProviderMessage = openAiError?.message
             ?: body
-        throw ProviderException(
+        return ProviderException(
             classified = errorClass,
             message = "OpenAI request failed with HTTP $httpStatus" +
                 (rawProviderMessage?.let { ": $it" } ?: ""),
             rawProviderMessage = rawProviderMessage,
         )
+    }
+
+    fun parseErrorAndThrow(httpStatus: Int, body: String?): Nothing {
+        throw classifyError(httpStatus, body)
     }
 
     private fun extractOpenAiError(body: String): com.strangeparticle.luther.core.client.provider.openai.error.OpenAiErrorDto? {
