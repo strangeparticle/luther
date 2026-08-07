@@ -6,6 +6,7 @@ import com.strangeparticle.luther.core.client.provider.ChatResponseEvent
 import com.strangeparticle.luther.core.client.provider.Model
 import com.strangeparticle.luther.core.client.provider.ProviderErrorType
 import com.strangeparticle.luther.core.client.provider.ProviderException
+import com.strangeparticle.luther.core.client.provider.postWithRetry
 import com.strangeparticle.luther.core.client.provider.openai.response.OpenAiStreamAccumulator
 import com.strangeparticle.luther.core.client.provider.sse.readSseData
 import io.ktor.client.HttpClient
@@ -104,29 +105,20 @@ internal class AiProviderClientOpenAi(
     }
 
     private suspend fun postOrThrow(url: String, apiKey: String, body: String): HttpResponse {
-        val response = try {
-            httpClient.post(url) {
-                contentType(ContentType.Application.Json)
-                headers {
-                    append(HttpHeaders.Authorization, "Bearer $apiKey")
+        return postWithRetry(
+            performPost = {
+                httpClient.post(url) {
+                    contentType(ContentType.Application.Json)
+                    headers {
+                        append(HttpHeaders.Authorization, "Bearer $apiKey")
+                    }
+                    setBody(body)
                 }
-                setBody(body)
-            }
-        } catch (e: CancellationException) {
-            // Cooperative coroutine cancellation must propagate so the surrounding scope
-            // unwinds normally — never reclassify as a Network error.
-            throw e
-        } catch (e: Exception) {
-            throw ProviderException(
-                ProviderErrorType.Network,
-                "Network error calling OpenAI: ${e.message}",
-                cause = e,
-            )
-        }
-        if (response.status != HttpStatusCode.OK) {
-            com.strangeparticle.luther.core.client.provider.openai.response.OpenAiResponseParser.parseErrorAndThrow(response.status.value, response.bodyAsText())
-        }
-        return response
+            },
+            classifyError = { status, responseBody ->
+                com.strangeparticle.luther.core.client.provider.openai.response.OpenAiResponseParser.classifyError(status, responseBody)
+            },
+        )
     }
 
     private suspend fun parseJsonOrThrow(response: HttpResponse): JsonObject {

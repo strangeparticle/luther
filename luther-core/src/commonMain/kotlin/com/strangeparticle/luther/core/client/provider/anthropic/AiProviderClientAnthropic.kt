@@ -6,6 +6,7 @@ import com.strangeparticle.luther.core.client.provider.ChatResponseEvent
 import com.strangeparticle.luther.core.client.provider.Model
 import com.strangeparticle.luther.core.client.provider.ProviderErrorType
 import com.strangeparticle.luther.core.client.provider.ProviderException
+import com.strangeparticle.luther.core.client.provider.postWithRetry
 import com.strangeparticle.luther.core.client.provider.anthropic.request.AnthropicChatCompletionRequestDto
 import com.strangeparticle.luther.core.client.provider.anthropic.response.AnthropicResponseParser
 import com.strangeparticle.luther.core.client.provider.anthropic.response.AnthropicStreamAccumulator
@@ -104,30 +105,19 @@ internal class AiProviderClientAnthropic(
     }
 
     private suspend fun postOrThrow(url: String, apiKey: String, body: String): HttpResponse {
-        val response = try {
-            httpClient.post(url) {
-                contentType(ContentType.Application.Json)
-                headers {
-                    append("x-api-key", apiKey)
-                    append("anthropic-version", ANTHROPIC_VERSION)
+        return postWithRetry(
+            performPost = {
+                httpClient.post(url) {
+                    contentType(ContentType.Application.Json)
+                    headers {
+                        append("x-api-key", apiKey)
+                        append("anthropic-version", ANTHROPIC_VERSION)
+                    }
+                    setBody(body)
                 }
-                setBody(body)
-            }
-        } catch (e: CancellationException) {
-            // Cooperative coroutine cancellation must propagate so the surrounding scope
-            // unwinds normally — never reclassify as a Network error.
-            throw e
-        } catch (e: Exception) {
-            throw ProviderException(
-                ProviderErrorType.Network,
-                "Network error calling Anthropic: ${e.message}",
-                cause = e,
-            )
-        }
-        if (response.status != HttpStatusCode.OK) {
-            AnthropicResponseParser.parseErrorAndThrow(response.status.value, response.bodyAsText())
-        }
-        return response
+            },
+            classifyError = { status, responseBody -> AnthropicResponseParser.classifyError(status, responseBody) },
+        )
     }
 
     companion object {
