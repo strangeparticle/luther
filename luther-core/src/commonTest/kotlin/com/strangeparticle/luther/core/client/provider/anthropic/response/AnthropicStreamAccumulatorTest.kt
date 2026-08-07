@@ -1,9 +1,12 @@
 package com.strangeparticle.luther.core.client.provider.anthropic.response
 
 import com.strangeparticle.luther.core.client.provider.ChatResponseEvent
+import com.strangeparticle.luther.core.client.provider.ProviderErrorType
+import com.strangeparticle.luther.core.client.provider.ProviderException
 import com.strangeparticle.luther.core.client.provider.StopReason
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class AnthropicStreamAccumulatorTest {
     private fun feed(acc: AnthropicStreamAccumulator, vararg data: String): List<ChatResponseEvent> {
@@ -66,5 +69,16 @@ class AnthropicStreamAccumulatorTest {
         assertEquals(1, completed.response.toolCalls.size)
         val call = completed.response.toolCalls.single()
         assertEquals("{}", call.argumentsJson)
+    }
+
+    @Test
+    fun `mid-stream error event throws ProviderException classified as ProviderUnavailable`() {
+        val accumulator = AnthropicStreamAccumulator()
+        accumulator.onData("""{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}""")
+        accumulator.onData("""{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hel"}}""")
+        val exception = assertFailsWith<ProviderException> {
+            accumulator.onData("""{"type":"error","error":{"type":"overloaded_error","message":"overloaded"}}""")
+        }
+        assertEquals(ProviderErrorType.ProviderUnavailable, exception.classified)
     }
 }

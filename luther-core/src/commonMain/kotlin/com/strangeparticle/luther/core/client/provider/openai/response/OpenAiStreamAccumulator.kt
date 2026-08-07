@@ -2,6 +2,8 @@ package com.strangeparticle.luther.core.client.provider.openai.response
 
 import com.strangeparticle.luther.core.client.provider.ChatResponse
 import com.strangeparticle.luther.core.client.provider.ChatResponseEvent
+import com.strangeparticle.luther.core.client.provider.ProviderErrorType
+import com.strangeparticle.luther.core.client.provider.ProviderException
 import com.strangeparticle.luther.core.client.provider.StopReason
 import com.strangeparticle.luther.core.client.provider.ToolCall
 import kotlinx.serialization.json.Json
@@ -19,7 +21,15 @@ internal class OpenAiStreamAccumulator(private val json: Json = Json { ignoreUnk
 
     fun onData(data: String): ChatResponseEvent.TextDelta? {
         if (data == "[DONE]") return null
-        val choice = json.parseToJsonElement(data).jsonObject["choices"]?.jsonArray?.firstOrNull()?.jsonObject ?: return null
+        val obj = json.parseToJsonElement(data).jsonObject
+        // A mid-stream chunk carrying a top-level `error` object means the SSE connection stayed open
+        // past a successful HTTP 200 but the provider then reported a failure inline. Without this
+        // guard, the accumulator would silently ignore the error chunk and `completed()` would return
+        // a truncated response as if the stream had ended normally.
+        if (obj["error"] != null) {
+            throw classifyStreamError(data)
+        }
+        val choice = obj["choices"]?.jsonArray?.firstOrNull()?.jsonObject ?: return null
         choice["finish_reason"]?.jsonPrimitive?.contentOrNull?.let { finishReason = it }
         val delta = choice["delta"]?.jsonObject ?: return null
 
@@ -40,6 +50,14 @@ internal class OpenAiStreamAccumulator(private val json: Json = Json { ignoreUnk
             return ChatResponseEvent.TextDelta(content)
         }
         return null
+    }
+
+    // Reuses the same body-based classifier the non-streaming error path uses (Task 1), passing the
+    // synthetic httpStatus 200 since the SSE connection itself succeeded before the error arrived.
+    private fun classifyStreamError(data: String): ProviderException = try {
+        OpenAiResponseParser.classifyError(httpStatus = 200, body = data)
+    } catch (e: Exception) {
+        ProviderException(ProviderErrorType.ProviderUnavailable, "OpenAI stream error", cause = e)
     }
 
     fun completed(): ChatResponseEvent.Completed = ChatResponseEvent.Completed(

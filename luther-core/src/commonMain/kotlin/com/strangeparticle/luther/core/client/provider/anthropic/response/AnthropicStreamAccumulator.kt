@@ -2,6 +2,8 @@ package com.strangeparticle.luther.core.client.provider.anthropic.response
 
 import com.strangeparticle.luther.core.client.provider.ChatResponse
 import com.strangeparticle.luther.core.client.provider.ChatResponseEvent
+import com.strangeparticle.luther.core.client.provider.ProviderErrorType
+import com.strangeparticle.luther.core.client.provider.ProviderException
 import com.strangeparticle.luther.core.client.provider.StopReason
 import com.strangeparticle.luther.core.client.provider.ToolCall
 import kotlinx.serialization.json.Json
@@ -23,6 +25,13 @@ internal class AnthropicStreamAccumulator(private val json: Json = Json { ignore
 
     fun onData(data: String): ChatResponseEvent.TextDelta? {
         val obj = json.parseToJsonElement(data).jsonObject
+        // A mid-stream `{"type":"error",...}` event means the SSE connection stayed open past a
+        // successful HTTP 200 but the provider then reported a failure inline. Without this guard,
+        // the accumulator would silently ignore the error event and `completed()` would return a
+        // truncated response as if the stream had ended normally.
+        if (obj["type"]?.jsonPrimitive?.contentOrNull == "error") {
+            throw classifyStreamError(data)
+        }
         when (obj["type"]?.jsonPrimitive?.contentOrNull) {
             "content_block_start" -> {
                 val index = obj["index"]?.jsonPrimitive?.intOrNull ?: return null
@@ -51,6 +60,14 @@ internal class AnthropicStreamAccumulator(private val json: Json = Json { ignore
                 stopReason = obj["delta"]?.jsonObject?.get("stop_reason")?.jsonPrimitive?.contentOrNull ?: stopReason
         }
         return null
+    }
+
+    // Reuses the same body-based classifier the non-streaming error path uses (Task 1), passing the
+    // synthetic httpStatus 200 since the SSE connection itself succeeded before the error arrived.
+    private fun classifyStreamError(data: String): ProviderException = try {
+        AnthropicResponseParser.classifyError(httpStatus = 200, body = data)
+    } catch (e: Exception) {
+        ProviderException(ProviderErrorType.ProviderUnavailable, "Anthropic stream error", cause = e)
     }
 
     fun completed(): ChatResponseEvent.Completed = ChatResponseEvent.Completed(

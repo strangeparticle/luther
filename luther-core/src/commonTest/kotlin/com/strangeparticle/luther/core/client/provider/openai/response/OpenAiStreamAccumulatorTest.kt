@@ -1,9 +1,12 @@
 package com.strangeparticle.luther.core.client.provider.openai.response
 
 import com.strangeparticle.luther.core.client.provider.ChatResponseEvent
+import com.strangeparticle.luther.core.client.provider.ProviderErrorType
+import com.strangeparticle.luther.core.client.provider.ProviderException
 import com.strangeparticle.luther.core.client.provider.StopReason
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class OpenAiStreamAccumulatorTest {
     private fun feed(acc: OpenAiStreamAccumulator, vararg data: String): List<ChatResponseEvent> {
@@ -57,5 +60,15 @@ class OpenAiStreamAccumulatorTest {
         val completed = events.last() as ChatResponseEvent.Completed
         val call = completed.response.toolCalls.single()
         assertEquals("{}", call.argumentsJson)
+    }
+
+    @Test
+    fun `mid-stream error payload throws ProviderException classified as Unknown`() {
+        val accumulator = OpenAiStreamAccumulator()
+        accumulator.onData("""{"choices":[{"index":0,"delta":{"role":"assistant","content":"Hel"},"finish_reason":null}]}""")
+        val exception = assertFailsWith<ProviderException> {
+            accumulator.onData("""{"error":{"message":"boom","type":"server_error"}}""")
+        }
+        assertEquals(ProviderErrorType.Unknown, exception.classified)
     }
 }
