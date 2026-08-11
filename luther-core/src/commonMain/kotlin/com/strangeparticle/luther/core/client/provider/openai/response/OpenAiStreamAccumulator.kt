@@ -7,6 +7,7 @@ import com.strangeparticle.luther.core.client.provider.ProviderException
 import com.strangeparticle.luther.core.client.provider.StopReason
 import com.strangeparticle.luther.core.client.provider.ToolCall
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -26,7 +27,12 @@ internal class OpenAiStreamAccumulator(private val json: Json = Json { ignoreUnk
         // past a successful HTTP 200 but the provider then reported a failure inline. Without this
         // guard, the accumulator would silently ignore the error chunk and `completed()` would return
         // a truncated response as if the stream had ended normally.
-        if (obj["error"] != null) {
+        // Note: `obj["error"]` is Kotlin `null` only when the key is ABSENT — an explicit
+        // `"error": null` (sent on every normal chunk by some OpenAI-compatible providers) decodes to
+        // a JsonNull element, which is `!= null`. Exclude JsonNull explicitly so those chunks aren't
+        // misclassified as errors.
+        val errorElement = obj["error"]
+        if (errorElement != null && errorElement !is JsonNull) {
             throw classifyStreamError(data)
         }
         val choice = obj["choices"]?.jsonArray?.firstOrNull()?.jsonObject ?: return null

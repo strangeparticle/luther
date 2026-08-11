@@ -71,4 +71,17 @@ class OpenAiStreamAccumulatorTest {
         }
         assertEquals(ProviderErrorType.Unknown, exception.classified)
     }
+
+    @Test
+    fun `explicit top-level error null on a normal chunk does not throw`() {
+        val events = feed(
+            OpenAiStreamAccumulator(),
+            """{"choices":[{"index":0,"delta":{"content":"hi"},"finish_reason":null}],"error":null}""",
+            """{"choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"error":null}""",
+        )
+        assertEquals(ChatResponseEvent.TextDelta("hi"), events[0])
+        val completed = events.last() as ChatResponseEvent.Completed
+        assertEquals("hi", completed.response.text)
+        assertEquals(StopReason.Stop, completed.response.stopReason)
+    }
 }
