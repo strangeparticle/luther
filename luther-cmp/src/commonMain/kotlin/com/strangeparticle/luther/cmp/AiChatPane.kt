@@ -77,6 +77,8 @@ data class AiChatPaneColors(
     val scrollbackPaneOutline: Color,
     val userMessageBubble: Color,
     val userMessageText: Color,
+    val assistantMessageBubble: Color,
+    val assistantMessageText: Color,
     val inputBorderFocused: Color,
     val inputBorderUnfocused: Color,
 )
@@ -100,6 +102,10 @@ object AiChatPaneDefaults {
         scrollbackPaneOutline = MaterialTheme.colorScheme.outlineVariant,
         userMessageBubble = MaterialTheme.colorScheme.primary,
         userMessageText = MaterialTheme.colorScheme.onPrimary,
+        // Distinct from the user's primary bubble but still in the theme's accent family, so the
+        // two speakers read as a pair rather than as unrelated elements.
+        assistantMessageBubble = MaterialTheme.colorScheme.secondaryContainer,
+        assistantMessageText = MaterialTheme.colorScheme.onSecondaryContainer,
         inputBorderFocused = MaterialTheme.colorScheme.primary,
         inputBorderUnfocused = MaterialTheme.colorScheme.outline,
     )

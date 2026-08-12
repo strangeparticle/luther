@@ -1,5 +1,12 @@
 package com.strangeparticle.luther.cmp
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.StartOffset
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Arrangement
@@ -17,7 +24,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -57,16 +67,59 @@ private fun UserTextRenderer(text: String) {
 
 @Composable
 private fun AssistantTextRenderer(text: String) {
+    val colors = AiChatPaneDefaults.colors()
     Surface(
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = colors.assistantMessageBubble,
         shape = MaterialTheme.shapes.small,
         modifier = Modifier.widthIn(max = 620.dp).testTag(AiChatTestTags.AI_CHAT_ASSISTANT_MESSAGE),
     ) {
         Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)) {
-            Text(text, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
+            // The session publishes an empty assistant item the instant a turn starts, so the
+            // response has somewhere to stream into. Until the first token lands there is nothing
+            // to draw, and a bare empty bubble reads as a glitch rather than as "thinking".
+            if (text.isEmpty()) {
+                AssistantWaitingIndicator(color = colors.assistantMessageText)
+            } else {
+                Text(text, color = colors.assistantMessageText, fontSize = 13.sp)
+            }
         }
     }
 }
+
+/** Dots fade in and out on a staggered loop, so the bubble reads as waiting rather than broken. */
+@Composable
+private fun AssistantWaitingIndicator(color: Color) {
+    val transition = rememberInfiniteTransition(label = "assistantWaiting")
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.testTag(AiChatTestTags.AI_CHAT_ASSISTANT_WAITING),
+    ) {
+        repeat(WAITING_DOT_COUNT) { dotIndex ->
+            val dotAlpha by transition.animateFloat(
+                initialValue = WAITING_DOT_MIN_ALPHA,
+                targetValue = WAITING_DOT_MAX_ALPHA,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = WAITING_DOT_FADE_MILLIS, easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse,
+                    initialStartOffset = StartOffset(dotIndex * WAITING_DOT_STAGGER_MILLIS),
+                ),
+                label = "assistantWaitingDot$dotIndex",
+            )
+            Text(
+                text = "•",
+                color = color.copy(alpha = dotAlpha),
+                fontSize = 13.sp,
+                modifier = Modifier.padding(horizontal = 1.dp),
+            )
+        }
+    }
+}
+
+private const val WAITING_DOT_COUNT = 3
+private const val WAITING_DOT_MIN_ALPHA = 0.25f
+private const val WAITING_DOT_MAX_ALPHA = 1f
+private const val WAITING_DOT_FADE_MILLIS = 500
+private const val WAITING_DOT_STAGGER_MILLIS = 160
 
 @Composable
 private fun ErrorMessageRenderer(message: String) {

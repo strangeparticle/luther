@@ -23,6 +23,7 @@ internal object AiChatTestTags {
     const val AI_CHAT_SCROLLBACK_PANE = "aiChatScrollbackPane"
     const val AI_CHAT_USER_MESSAGE = "aiChatUserMessage"
     const val AI_CHAT_ASSISTANT_MESSAGE = "aiChatAssistantMessage"
+    const val AI_CHAT_ASSISTANT_WAITING = "aiChatAssistantWaiting"
     const val AI_CHAT_COMMAND_MESSAGE = "aiChatCommandMessage"
     const val AI_CHAT_TOOL_ACTIVITY = "aiChatToolActivity"
     const val AI_CHAT_ERROR_MESSAGE = "aiChatErrorMessage"
