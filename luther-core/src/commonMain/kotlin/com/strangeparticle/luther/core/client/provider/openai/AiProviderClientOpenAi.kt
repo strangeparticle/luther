@@ -6,13 +6,16 @@ import com.strangeparticle.luther.core.client.provider.ChatResponseEvent
 import com.strangeparticle.luther.core.client.provider.Model
 import com.strangeparticle.luther.core.client.provider.ProviderErrorType
 import com.strangeparticle.luther.core.client.provider.ProviderException
+import com.strangeparticle.luther.core.client.provider.executePostWithRetry
 import com.strangeparticle.luther.core.client.provider.postWithRetry
 import com.strangeparticle.luther.core.client.provider.openai.response.OpenAiStreamAccumulator
 import com.strangeparticle.luther.core.client.provider.sse.readSseData
 import io.ktor.client.HttpClient
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.client.request.post
+import io.ktor.client.request.preparePost
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsChannel
@@ -61,9 +64,19 @@ internal class AiProviderClientOpenAi(
             com.strangeparticle.luther.core.client.provider.openai.request.OpenAiChatCompletionRequestDto.Companion.serializer(),
             com.strangeparticle.luther.core.client.provider.openai.request.OpenAiChatCompletionRequestDto.Companion.from(request, stream = true),
         )
-        val response = postOrThrow("$baseUrl/v1/chat/completions", apiKey, body)
         val accumulator = OpenAiStreamAccumulator()
-        readSseData(response.bodyAsChannel()) { data -> accumulator.onData(data)?.let { emit(it) } }
+        // Must use the prepared request API: a body-loading call such as httpClient.post() does not
+        // return until the entire response has been buffered, which would defeat streaming entirely.
+        executePostWithRetry(
+            preparePost = {
+                httpClient.preparePost("$baseUrl/v1/chat/completions") { configurePost(apiKey, body) }
+            },
+            classifyError = { status, responseBody ->
+                com.strangeparticle.luther.core.client.provider.openai.response.OpenAiResponseParser.classifyError(status, responseBody)
+            },
+        ) { response ->
+            readSseData(response.bodyAsChannel()) { data -> accumulator.onData(data)?.let { emit(it) } }
+        }
         emit(accumulator.completed())
     }
 
@@ -104,16 +117,19 @@ internal class AiProviderClientOpenAi(
         return key
     }
 
+    /** Shared request shape for the blocking and streaming POSTs so they cannot drift apart. */
+    private fun HttpRequestBuilder.configurePost(apiKey: String, body: String) {
+        contentType(ContentType.Application.Json)
+        headers {
+            append(HttpHeaders.Authorization, "Bearer $apiKey")
+        }
+        setBody(body)
+    }
+
     private suspend fun postOrThrow(url: String, apiKey: String, body: String): HttpResponse {
         return postWithRetry(
             performPost = {
-                httpClient.post(url) {
-                    contentType(ContentType.Application.Json)
-                    headers {
-                        append(HttpHeaders.Authorization, "Bearer $apiKey")
-                    }
-                    setBody(body)
-                }
+                httpClient.post(url) { configurePost(apiKey, body) }
             },
             classifyError = { status, responseBody ->
                 com.strangeparticle.luther.core.client.provider.openai.response.OpenAiResponseParser.classifyError(status, responseBody)

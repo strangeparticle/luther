@@ -1,6 +1,7 @@
 package com.strangeparticle.luther.core.client.provider
 
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.HttpStatement
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -104,6 +105,84 @@ internal suspend fun postWithRetry(
             continue
         } else {
             throw exception
+        }
+    }
+
+    error("unreachable: loop over maxAttempts must return or throw")
+}
+
+/** A non-OK attempt's classified failure plus any server-supplied `Retry-After` delay. */
+private data class AttemptFailure(val exception: ProviderException, val retryAfter: Duration?)
+
+/**
+ * The streaming counterpart to [postWithRetry].
+ *
+ * [postWithRetry] returns an [HttpResponse], which forces callers to obtain it from a body-loading
+ * call such as `httpClient.post(...)`. Those calls do not return until the whole response body has
+ * been read into memory, so a caller reading `bodyAsChannel()` afterwards is replaying a completed
+ * buffer and can never observe incremental server-sent events. Streaming therefore has to run
+ * inside `HttpStatement.execute { }`, where the response body is still live — and a response
+ * scoped to that lambda cannot be returned out of it, which is why this is a separate function
+ * rather than a flag on [postWithRetry].
+ *
+ * Retry semantics match [postWithRetry] with one deliberate difference: once [consumeResponse] has
+ * begun reading a 200 response, failures are never retried. Partial output has already reached the
+ * caller by then, and replaying the request would duplicate it.
+ *
+ * @param preparePost builds one HTTP POST attempt without sending it.
+ * @param classifyError maps a non-OK status code and response body to a [ProviderException].
+ * @param consumeResponse reads the live 200 response; exceptions it raises propagate unretried.
+ */
+internal suspend fun executePostWithRetry(
+    policy: RetryPolicy = RetryPolicy.Default,
+    preparePost: suspend () -> HttpStatement,
+    classifyError: (status: Int, body: String) -> ProviderException,
+    random: Random = Random,
+    consumeResponse: suspend (HttpResponse) -> Unit,
+) {
+    for (attemptIndex in 0 until policy.maxAttempts) {
+        val isLastAttempt = attemptIndex == policy.maxAttempts - 1
+        var consumeStarted = false
+
+        val failure: AttemptFailure? = try {
+            preparePost().execute { response ->
+                if (response.status == HttpStatusCode.OK) {
+                    consumeStarted = true
+                    consumeResponse(response)
+                    null
+                } else {
+                    // Retry-After must be read before bodyAsText() consumes the response body.
+                    val retryAfter = parseRetryAfter(response.headers[HttpHeaders.RetryAfter])
+                    AttemptFailure(classifyError(response.status.value, response.bodyAsText()), retryAfter)
+                }
+            }
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (providerException: ProviderException) {
+            // Raised by consumeResponse — e.g. a mid-stream SSE `error` event. Already classified,
+            // and not a transport failure, so it must surface as-is rather than be retried.
+            throw providerException
+        } catch (transportException: Exception) {
+            val wrapped = ProviderException(
+                ProviderErrorType.Network,
+                "Network error: ${transportException.message}",
+                cause = transportException,
+            )
+            if (consumeStarted || isLastAttempt) {
+                throw wrapped
+            }
+            delay(delayFor(attemptIndex, retryAfter = null, policy, random))
+            continue
+        }
+
+        if (failure == null) {
+            return
+        }
+        if (RETRYABLE_ERROR_TYPES.contains(failure.exception.classified) && !isLastAttempt) {
+            delay(delayFor(attemptIndex, failure.retryAfter, policy, random))
+            continue
+        } else {
+            throw failure.exception
         }
     }
 
